@@ -1218,8 +1218,9 @@ async def handle_edit_flow_more(update: Update, context: ContextTypes.DEFAULT_TY
         )
         return ConversationHandler.END
 
-    await query.message.reply_text(format_renewal_summary(row))
-    await query.message.reply_text(EDIT_FIELD_PROMPT, reply_markup=build_edit_field_keyboard())
+    # Combine summary and prompt into one message for clarity
+    combined_text = f"{format_renewal_summary(row)}\n\n{EDIT_FIELD_PROMPT}"
+    await query.message.reply_text(combined_text, reply_markup=build_edit_field_keyboard())
     return EDIT_AWAITING_FIELD_CHOICE
 
 
