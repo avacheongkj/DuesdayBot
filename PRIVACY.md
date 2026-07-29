@@ -6,7 +6,7 @@ DuesdayBot ("we," "us," "our," or the "Service") is a Telegram bot that helps yo
 
 ## 2. Data Controller
 
-DuesdayBot is operated by Ava Chong.
+DuesdayBot is operated by Ava Cheong.
 
 ## 3. What Personal Data We Collect
 
