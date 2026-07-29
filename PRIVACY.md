@@ -6,7 +6,7 @@ DuesdayBot ("we," "us," "our," or the "Service") is a Telegram bot that helps yo
 
 ## 2. Data Controller
 
-DuesdayBot is operated by Ava Chong. For privacy enquiries, contact: avackj1999@gmail.com
+DuesdayBot is operated by Ava Chong.
 
 ## 3. What Personal Data We Collect
 
@@ -71,7 +71,7 @@ You have the right to:
 - **Deletion:** Request deletion of your data (right to be forgotten) via the `/stop` command
 - **Withdraw Consent:** You can withdraw consent to data processing at any time via the `/stop` command
 
-To exercise any of these rights, contact: avackj1999@gmail.com
+All rights can be exercised directly through the bot's commands.
 
 ## 9. Data Breach Notification
 
@@ -83,7 +83,9 @@ We may update this privacy policy from time to time. Material changes will be co
 
 ## 11. Contact Us
 
-For privacy concerns, questions, or to exercise your rights, please contact:
+To exercise your rights (access, correction, deletion, withdraw consent), use the `/export`, `/edit`, or `/stop` commands in the bot.
+
+For other privacy concerns or questions not covered by the above commands, please contact:
 
 **Email:** avackj1999@gmail.com
 
