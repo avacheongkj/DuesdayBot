@@ -1843,8 +1843,6 @@ def build_application() -> Application:
             CommandHandler("add", add_start),
             CallbackQueryHandler(start_add_button, pattern=r"^start_add$"),
         ],
-        per_user=True,
-        per_chat=True,
         states={
             ITEM: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_item)],
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_date)],
@@ -1866,8 +1864,6 @@ def build_application() -> Application:
             CallbackQueryHandler(handle_done_pressed, pattern=r"^renewal_done:"),
             CallbackQueryHandler(handle_snooze_pressed, pattern=r"^renewal_snooze:"),
         ],
-        per_user=True,
-        per_chat=True,
         states={
             AWAITING_DONE_STATUS: [
                 CallbackQueryHandler(handle_done_renewing, pattern=r"^renewal_done_renew:"),
@@ -1892,8 +1888,6 @@ def build_application() -> Application:
     # itself — /edit just lists items with that button (see edit_start).
     edit_conversation = ConversationHandler(
         entry_points=[CallbackQueryHandler(handle_edit_pick, pattern=r"^edit_pick:")],
-        per_user=True,
-        per_chat=True,
         states={
             EDIT_AWAITING_FIELD_CHOICE: [
                 CallbackQueryHandler(edit_field_choice_button, pattern=r"^edit_field:")
@@ -1921,8 +1915,6 @@ def build_application() -> Application:
     # Same pattern: entry point is the "Delete This One" / "🗑️ Delete" button.
     delete_conversation = ConversationHandler(
         entry_points=[CallbackQueryHandler(handle_delete_pick, pattern=r"^delete_pick:")],
-        per_user=True,
-        per_chat=True,
         states={
             DELETE_AWAITING_CONFIRM: [
                 CallbackQueryHandler(handle_delete_confirm_yes, pattern=r"^delete_confirm_yes:"),
