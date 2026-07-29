@@ -889,18 +889,14 @@ async def handle_compare_back(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # --- shared: per-item list rendering (used by /list, /edit, /delete pickers) ---
 def format_list_item(r: dict) -> str:
-    link_text = r.get("link") or "—"
-    notes_text = r.get("notes") or ""
-    output = (
+    notes_text = r.get("notes") or "—"
+    return (
         f"{r['name']} ({r['category']})\n"
         f"Due: {r['due_date']}\n"
         f"Owner: {r['owner']}\n"
-        f"Link: {link_text}\n"
+        f"Notes: {notes_text}\n"
         f"Reminders: {r['reminder_type']}, {r['lead_time_days']} day(s) before"
     )
-    if notes_text:
-        output += f"\nNotes: {notes_text}"
-    return output
 
 
 def format_renewal_summary(row: dict) -> str:
@@ -2025,7 +2021,10 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     message = f"Due Today ({len(today_items)} item{'s' if len(today_items) != 1 else ''}):\n\n"
     for item in today_items:
-        message += f"- {item['name']}\n  Owner: {item['owner']}\n  Category: {item['category']}\n\n"
+        message += f"- {item['name']}\n  Owner: {item['owner']}\n  Category: {item['category']}"
+        if item.get("notes"):
+            message += f"\n  Notes: {item['notes']}"
+        message += "\n\n"
 
     await update.message.reply_text(message)
 
@@ -2069,7 +2068,10 @@ async def upcoming_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     for item in upcoming_items:
         due_date = item["due_date"]
         days_until = (date.fromisoformat(due_date) - today).days
-        message += f"- {item['name']} (in {days_until} day{'s' if days_until != 1 else ''})\n  Due: {due_date}\n\n"
+        message += f"- {item['name']} (in {days_until} day{'s' if days_until != 1 else ''})\n  Due: {due_date}"
+        if item.get("notes"):
+            message += f"\n  Notes: {item['notes']}"
+        message += "\n\n"
 
     await update.message.reply_text(message)
 
