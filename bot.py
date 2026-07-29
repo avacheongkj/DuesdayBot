@@ -1845,7 +1845,6 @@ def build_application() -> Application:
         ],
         per_user=True,
         per_chat=True,
-        per_message=True,
         states={
             ITEM: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_item)],
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_date)],
@@ -1869,7 +1868,6 @@ def build_application() -> Application:
         ],
         per_user=True,
         per_chat=True,
-        per_message=True,
         states={
             AWAITING_DONE_STATUS: [
                 CallbackQueryHandler(handle_done_renewing, pattern=r"^renewal_done_renew:"),
@@ -1896,7 +1894,6 @@ def build_application() -> Application:
         entry_points=[CallbackQueryHandler(handle_edit_pick, pattern=r"^edit_pick:")],
         per_user=True,
         per_chat=True,
-        per_message=True,
         states={
             EDIT_AWAITING_FIELD_CHOICE: [
                 CallbackQueryHandler(edit_field_choice_button, pattern=r"^edit_field:")
@@ -1926,7 +1923,6 @@ def build_application() -> Application:
         entry_points=[CallbackQueryHandler(handle_delete_pick, pattern=r"^delete_pick:")],
         per_user=True,
         per_chat=True,
-        per_message=True,
         states={
             DELETE_AWAITING_CONFIRM: [
                 CallbackQueryHandler(handle_delete_confirm_yes, pattern=r"^delete_confirm_yes:"),
