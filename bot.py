@@ -1271,7 +1271,7 @@ async def delete_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 HELLO_PATTERN = re.compile(r"\bhello\b", re.IGNORECASE)
 
 # /add conversation states
-ITEM, DATE, OWNER, LINK, REMINDER_LEAD, REMINDER_COUNT = range(6)
+ITEM, DATE, OWNER, NOTES, REMINDER_LEAD, REMINDER_COUNT = range(6)
 
 # Accepts inputs like "7", "7 days", "2 weeks", "1 week"
 LEAD_TIME_PATTERN = re.compile(
@@ -1383,14 +1383,14 @@ async def add_date(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def add_owner(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["new_renewal"]["owner"] = update.message.text
     await update.message.reply_text(
-        "Any link to save? (e.g., renewal page URL — just reply 'skip' if not)"
+        "Any additional info? (links, who's involved, where to renew, etc. — or reply 'skip' if not)"
     )
-    return LINK
+    return NOTES
 
 
-async def add_link(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    link = update.message.text.strip()
-    context.user_data["new_renewal"]["link"] = None if link.lower() == "skip" else link
+async def add_notes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    notes = update.message.text.strip()
+    context.user_data["new_renewal"]["notes"] = None if notes.lower() == "skip" else notes
     await update.message.reply_text(
         "How far in advance should I start reminding you? (e.g., 7 days, 2 weeks)"
     )
@@ -1433,7 +1433,7 @@ async def add_reminder_count(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "name": renewal["item"],
         "due_date": renewal["due_date"],
         "owner": renewal["owner"],
-        "link": renewal["link"],
+        "notes": renewal["notes"],
         "lead_time_days": renewal["reminder_lead_days"],
         "reminder_type": renewal["reminder_type"],
         "category": renewal["category"],
@@ -1442,11 +1442,12 @@ async def add_reminder_count(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if saved:
         shared_note = " Added to the group's shared list!" if scope == "group" else ""
+        notes_str = f"\n📝 Notes: {renewal['notes']}" if renewal["notes"] else ""
         await update.message.reply_text(
             f"Got it! {renewal['item']} is due {renewal['date_display']}, "
             f"owned by {renewal['owner']}. I'll send {renewal['reminder_count']} "
             f"reminder(s), starting {renewal['reminder_lead_label']} before it's due. "
-            f"Saved!{shared_note}"
+            f"Saved!{notes_str}{shared_note}"
         )
     else:
         await update.message.reply_text(
@@ -1521,15 +1522,15 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
 
     elif step == "owner":
         state["data"]["owner"] = update.message.text
-        state["step"] = "link"
+        state["step"] = "notes"
         set_group_state(user_id, group_id, state)
         await update.message.reply_text(
-            "Any link to save? (e.g., renewal page URL — just reply 'skip' if not)"
+            "Any additional info? (links, who's involved, where to renew, etc. — or reply 'skip' if not)"
         )
 
-    elif step == "link":
-        link = update.message.text.strip()
-        state["data"]["link"] = None if link.lower() == "skip" else link
+    elif step == "notes":
+        notes = update.message.text.strip()
+        state["data"]["notes"] = None if notes.lower() == "skip" else notes
         state["step"] = "lead_time"
         set_group_state(user_id, group_id, state)
         await update.message.reply_text(
@@ -1571,7 +1572,7 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
             "name": data["item"],
             "due_date": data["due_date"],
             "owner": data["owner"],
-            "link": data["link"],
+            "notes": data["notes"],
             "lead_time_days": data["reminder_lead_days"],
             "reminder_type": data["reminder_type"],
             "category": data["category"],
@@ -1579,11 +1580,12 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
         saved = await save_renewal(row)
 
         if saved:
+            notes_str = f"\n📝 Notes: {data['notes']}" if data["notes"] else ""
             await update.message.reply_text(
                 f"Got it! {data['item']} is due {data['date_display']}, "
                 f"owned by {data['owner']}. I'll send {data['reminder_count']} "
                 f"reminder(s), starting {data['reminder_lead_label']} before it's due. "
-                f"Saved! Added to the group's shared list!"
+                f"Saved!{notes_str} Added to the group's shared list!"
             )
         else:
             await update.message.reply_text(
@@ -2012,7 +2014,7 @@ def build_application() -> Application:
             ITEM: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_item)],
             DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_date)],
             OWNER: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_owner)],
-            LINK: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_link)],
+            NOTES: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_notes)],
             REMINDER_LEAD: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, add_reminder_lead)
             ],
