@@ -972,9 +972,14 @@ def build_edit_field_keyboard() -> InlineKeyboardMarkup:
 
 def build_reminder_type_keyboard() -> InlineKeyboardMarkup:
     # One button per row so full labels always show clearly.
+    labels = {
+        "single": "Once before due date",
+        "escalating": "Multiple reminders before due date",
+        "weekly": "Weekly until due date",
+    }
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton(option.capitalize(), callback_data=f"edit_reminder_type:{option}")]
+            [InlineKeyboardButton(labels[option], callback_data=f"edit_reminder_type:{option}")]
             for option in REMINDER_TYPE_OPTIONS
         ]
     )
