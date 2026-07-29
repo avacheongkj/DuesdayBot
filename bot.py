@@ -108,6 +108,11 @@ def get_scope(update: Update) -> tuple[str, str]:
     return "personal", str(update.effective_user.id)
 
 
+def not_command(update: Update) -> bool:
+    """Return False if message is a command, True otherwise."""
+    return not update.message.text.startswith("/")
+
+
 async def save_renewal(row: dict) -> bool:
     """Insert a renewal row into Supabase. Returns True on success."""
     if supabase is None:
@@ -1444,7 +1449,7 @@ async def add_reminder_count(update: Update, context: ContextTypes.DEFAULT_TYPE)
     saved = await save_renewal(row)
 
     if saved:
-        shared_note = " Added to the group's shared list!" if scope == "group" else ""
+        shared_note = "\nAdded to the group's shared list!" if scope == "group" else ""
         notes_str = f"\n📝 Notes: {renewal['notes']}" if renewal["notes"] else ""
         await update.message.reply_text(
             f"Got it! {renewal['item']} is due {renewal['date_display']}, "
@@ -1484,13 +1489,6 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
     """Handle messages in group /add flow using module-level state tracking (v2)."""
     scope, _ = get_scope(update)
     if scope != "group":
-        return
-
-    # If user sends a command, cancel the flow and let the command handler process it
-    if update.message.text.startswith("/"):
-        user_id = str(update.effective_user.id)
-        group_id = str(update.effective_chat.id)
-        clear_group_state(user_id, group_id)
         return
 
     user_id = str(update.effective_user.id)
@@ -1588,7 +1586,7 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
                 f"Got it! {data['item']} is due {data['date_display']}, "
                 f"owned by {data['owner']}. I'll send {data['reminder_count']} "
                 f"reminder(s), starting {data['reminder_lead_label']} before it's due. "
-                f"Saved!{notes_str} Added to the group's shared list!"
+                f"Saved!{notes_str}\nAdded to the group's shared list!"
             )
         else:
             await update.message.reply_text(
@@ -2025,7 +2023,17 @@ def build_application() -> Application:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, add_reminder_count)
             ],
         },
-        fallbacks=[CommandHandler("cancel", add_cancel)],
+        fallbacks=[
+            CommandHandler("cancel", add_cancel),
+            CommandHandler("list", list_renewals),
+            CommandHandler("edit", edit_start),
+            CommandHandler("delete", delete_start),
+            CommandHandler("help", help_command),
+            CommandHandler("export", export_command),
+            CommandHandler("privacy", privacy_command),
+            CommandHandler("checknow", check_now),
+            CommandHandler("stop", stop_start),
+        ],
     )
 
     # Done/Snooze reminder-button flows, each with a text or button follow-up
@@ -2050,7 +2058,18 @@ def build_application() -> Application:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_snooze_custom_days)
             ],
         },
-        fallbacks=[CommandHandler("cancel", cancel_renewal_action)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_renewal_action),
+            CommandHandler("add", add_start),
+            CommandHandler("list", list_renewals),
+            CommandHandler("edit", edit_start),
+            CommandHandler("delete", delete_start),
+            CommandHandler("help", help_command),
+            CommandHandler("export", export_command),
+            CommandHandler("privacy", privacy_command),
+            CommandHandler("checknow", check_now),
+            CommandHandler("stop", stop_start),
+        ],
     )
 
     # /edit: pick an existing to-due by name, then change one field
@@ -2079,7 +2098,17 @@ def build_application() -> Application:
                 CallbackQueryHandler(handle_edit_flow_more, pattern=r"^edit_flow_more$"),
             ],
         },
-        fallbacks=[CommandHandler("cancel", edit_cancel)],
+        fallbacks=[
+            CommandHandler("cancel", edit_cancel),
+            CommandHandler("add", add_start),
+            CommandHandler("list", list_renewals),
+            CommandHandler("delete", delete_start),
+            CommandHandler("help", help_command),
+            CommandHandler("export", export_command),
+            CommandHandler("privacy", privacy_command),
+            CommandHandler("checknow", check_now),
+            CommandHandler("stop", stop_start),
+        ],
     )
 
     # Same pattern: entry point is the "Delete This One" / "🗑️ Delete" button.
@@ -2091,12 +2120,22 @@ def build_application() -> Application:
                 CallbackQueryHandler(handle_delete_confirm_no, pattern=r"^delete_confirm_no:"),
             ],
         },
-        fallbacks=[CommandHandler("cancel", delete_cancel)],
+        fallbacks=[
+            CommandHandler("cancel", delete_cancel),
+            CommandHandler("add", add_start),
+            CommandHandler("list", list_renewals),
+            CommandHandler("edit", edit_start),
+            CommandHandler("help", help_command),
+            CommandHandler("export", export_command),
+            CommandHandler("privacy", privacy_command),
+            CommandHandler("checknow", check_now),
+            CommandHandler("stop", stop_start),
+        ],
     )
 
     # Group /add flow handler (v2: module-level state tracking)
     application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUP, group_add_message_handler)
+        MessageHandler(filters.TEXT & filters.ChatType.GROUP & not_command, group_add_message_handler)
     )
 
     # Registered before the "hello" handler so replies mid-conversation

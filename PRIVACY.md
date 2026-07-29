@@ -58,15 +58,33 @@ We do not share, sell, or trade your data to third parties.
 ## 7. Data Retention
 
 - **Active Data:** Retained whilst your account is active
-- **Deleted Data:** Permanently deleted within 30 days of your request
-- **Backup Copies:** May persist for up to 90 days for disaster recovery
-- **Compliance Data:** Anonymised data may be retained for legal compliance
+- **Deleted Data:** Permanently deleted immediately when you run the `/stop` command
+- **Backup Copies:** Automated backups may persist for up to 90 days for disaster recovery purposes only
+- **Legal Holds:** If we receive a court order, legal hold notice, or valid regulatory request, we will preserve your data as required by law and stop processing deletion requests until the legal obligation is resolved
 
 ## 8. Your Rights Under PDPA
 
 You have the right to:
 
-- **Access:** Request a copy of your personal data
-- **Correction:** Request correction of inaccurate data
+- **Access:** Request a copy of your personal data via the `/export` command
+- **Correction:** Request correction of inaccurate data via the `/edit` command
 - **Deletion:** Request deletion of your data (right to be forgotten) via the `/stop` command
--
+- **Withdraw Consent:** You can withdraw consent to data processing at any time via the `/stop` command
+
+To exercise any of these rights, contact: avackj1999@gmail.com
+
+## 9. Data Breach Notification
+
+In the event of a data breach affecting your personal data, we will notify you without undue delay, as required by PDPA, and describe the breach, its impact, and measures taken to mitigate it.
+
+## 10. Changes to This Privacy Policy
+
+We may update this privacy policy from time to time. Material changes will be communicated to you. Your continued use of DuesdayBot after changes constitutes your acceptance of the updated policy.
+
+## 11. Contact Us
+
+For privacy concerns, questions, or to exercise your rights, please contact:
+
+**Email:** avackj1999@gmail.com
+
+Last updated: July 2026
