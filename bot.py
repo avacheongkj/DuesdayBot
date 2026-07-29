@@ -1545,8 +1545,10 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
     user_id = str(update.effective_user.id)
     group_id = str(update.effective_chat.id)
     state = get_group_state(user_id, group_id)
+    logger.info(f"Group message handler: user={user_id}, group={group_id}, state={state}, msg={update.message.text[:50]}")
 
     if state is None:
+        logger.info(f"No state for user {user_id} in group {group_id}")
         return
 
     step = state.get("step")
