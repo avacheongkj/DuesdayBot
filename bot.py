@@ -1470,7 +1470,9 @@ async def add_start_group(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     user_id = str(update.effective_user.id)
     group_id = str(update.effective_chat.id)
+    print(f"DEBUG: add_start_group called - user_id={user_id}, group_id={group_id}")
     set_group_state(user_id, group_id, {"step": "item", "data": {}})
+    print(f"DEBUG: state set for user_id={user_id}, group_id={group_id}")
     await update.message.reply_text(ADD_ITEM_PROMPT)
 
 
@@ -1478,6 +1480,13 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
     """Handle messages in group /add flow using module-level state tracking (v2)."""
     scope, _ = get_scope(update)
     if scope != "group":
+        return
+
+    # If user sends a command, cancel the flow and let the command handler process it
+    if update.message.text.startswith("/"):
+        user_id = str(update.effective_user.id)
+        group_id = str(update.effective_chat.id)
+        clear_group_state(user_id, group_id)
         return
 
     user_id = str(update.effective_user.id)
