@@ -1315,7 +1315,16 @@ ADD_ITEM_PROMPT = (
 
 
 async def add_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Kick off the /add conversation by asking for the item and type."""
+    """Kick off the /add conversation by asking for the item and type.
+    Routes to group-specific handler if in a group, otherwise uses ConversationHandler."""
+    scope, _ = get_scope(update)
+
+    # For groups, use custom state tracking instead of ConversationHandler
+    if scope == "group":
+        await add_start_group(update, context)
+        return ConversationHandler.END
+
+    # For personal chats, use ConversationHandler flow
     if not await require_consent(update):
         return ConversationHandler.END
     context.user_data["new_renewal"] = {}
@@ -1427,6 +1436,126 @@ async def add_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.pop("new_renewal", None)
     await update.message.reply_text("No worries, cancelled. Nothing was saved.")
     return ConversationHandler.END
+
+
+# --- Group-specific /add handlers (custom state tracking) ---
+def get_group_add_key(update: Update) -> str:
+    """Generate a unique key for group conversation state."""
+    chat_id = update.effective_chat.id
+    user_id = update.effective_user.id
+    return f"group_add_{chat_id}_{user_id}"
+
+
+async def add_start_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Start /add flow in a group with custom state tracking."""
+    if not await require_consent(update):
+        return
+    key = get_group_add_key(update)
+    context.user_data[key] = {"step": "item", "data": {}}
+    await update.message.reply_text(ADD_ITEM_PROMPT)
+
+
+async def group_add_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle messages in group /add flow by checking current step."""
+    scope, _ = get_scope(update)
+    if scope != "group":
+        return
+
+    key = get_group_add_key(update)
+    if key not in context.user_data:
+        return
+
+    state = context.user_data[key]
+    step = state.get("step")
+
+    if step == "item":
+        state["data"]["item"] = update.message.text
+        state["step"] = "date"
+        await update.message.reply_text("When is it due? (e.g., 15 March 2027)")
+
+    elif step == "date":
+        text = update.message.text.strip()
+        due_date = parse_due_date(text)
+        if due_date is None:
+            await update.message.reply_text(
+                "Sorry, I couldn't understand that date. Try something like "
+                "'15 March 2027' or '2027-03-15'."
+            )
+            return
+        state["data"]["date_display"] = text
+        state["data"]["due_date"] = due_date
+        state["step"] = "owner"
+        await update.message.reply_text("Who owns it? You, your partner or someone else?")
+
+    elif step == "owner":
+        state["data"]["owner"] = update.message.text
+        state["step"] = "link"
+        await update.message.reply_text(
+            "Any link to save? (e.g., renewal page URL — just reply 'skip' if not)"
+        )
+
+    elif step == "link":
+        link = update.message.text.strip()
+        state["data"]["link"] = None if link.lower() == "skip" else link
+        state["step"] = "lead_time"
+        await update.message.reply_text(
+            "How far in advance should I start reminding you? (e.g., 7 days, 2 weeks)"
+        )
+
+    elif step == "lead_time":
+        parsed = parse_lead_time(update.message.text)
+        if parsed is None:
+            await update.message.reply_text(
+                "Sorry, I didn't catch that. Please reply like '7 days' or '2 weeks'."
+            )
+            return
+        lead_days, lead_label = parsed
+        state["data"]["reminder_lead_days"] = lead_days
+        state["data"]["reminder_lead_label"] = lead_label
+        state["step"] = "reminder_count"
+        await update.message.reply_text("How many reminders would you like? (e.g., 1, 2, 3)")
+
+    elif step == "reminder_count":
+        text = update.message.text.strip()
+        if not text.isdigit() or int(text) < 1:
+            await update.message.reply_text(
+                "Please reply with a whole number of reminders, like 1, 2, or 3."
+            )
+            return
+
+        data = state["data"]
+        data["reminder_count"] = int(text)
+        data["reminder_type"] = "single" if data["reminder_count"] == 1 else "escalating"
+        data["category"] = categorize_item(data["item"])
+
+        scope, scope_id = get_scope(update)
+        row = {
+            "user_id": None if scope == "group" else scope_id,
+            "group_id": scope_id if scope == "group" else None,
+            "name": data["item"],
+            "due_date": data["due_date"],
+            "owner": data["owner"],
+            "link": data["link"],
+            "lead_time_days": data["reminder_lead_days"],
+            "reminder_type": data["reminder_type"],
+            "category": data["category"],
+        }
+        saved = await save_renewal(row)
+
+        if saved:
+            await update.message.reply_text(
+                f"Got it! {data['item']} is due {data['date_display']}, "
+                f"owned by {data['owner']}. I'll send {data['reminder_count']} "
+                f"reminder(s), starting {data['reminder_lead_label']} before it's due. "
+                f"Saved! Added to the group's shared list!"
+            )
+        else:
+            await update.message.reply_text(
+                "I couldn't reach the database, so that renewal wasn't saved. "
+                "Please try /add again in a moment."
+            )
+
+        context.user_data.pop(key, None)
 
 
 HELP_TEXT = (
@@ -1965,6 +2094,11 @@ def build_application() -> Application:
     # Add new handlers here as the bot grows (commands, callbacks, etc.)
     application.add_handler(
         MessageHandler(filters.TEXT & filters.Regex(HELLO_PATTERN), handle_hello)
+    )
+
+    # Group /add flow handler (custom state tracking for groups)
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, group_add_message_handler)
     )
 
     return application
