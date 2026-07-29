@@ -1930,11 +1930,11 @@ def generate_export_pdf(rows: list[dict], scope: str) -> bytes:
                   date.fromisoformat(r["due_date"]) < today)
 
     pdf.set_font("Helvetica", "B", size=11)
-    pdf.cell(0, 6, "Summary", ln=True)
+    pdf.cell(0, 6, "SUMMARY", ln=True)
     pdf.set_font("Helvetica", size=10)
-    pdf.cell(0, 5, f"• Total items: {total}", ln=True)
-    pdf.cell(0, 5, f"• Due this month: {due_this_month}", ln=True)
-    pdf.cell(0, 5, f"• Overdue: {overdue}", ln=True)
+    pdf.cell(0, 5, f"- Total items: {total}", ln=True)
+    pdf.cell(0, 5, f"- Due this month: {due_this_month}", ln=True)
+    pdf.cell(0, 5, f"- Overdue: {overdue}", ln=True)
     pdf.ln(2)
 
     # Sort by due date
@@ -1942,22 +1942,30 @@ def generate_export_pdf(rows: list[dict], scope: str) -> bytes:
 
     # Items
     pdf.set_font("Helvetica", "B", size=11)
-    pdf.cell(0, 6, "Your To-Dues", ln=True)
+    pdf.cell(0, 6, "TO-DUES", ln=True)
 
     for row in sorted_rows:
         pdf.set_font("Helvetica", "B", size=10)
-        pdf.cell(0, 5, row["name"], ln=True)
+        item_name = str(row.get("name", "N/A"))[:50]  # Truncate to avoid encoding issues
+        pdf.cell(0, 5, item_name, ln=True)
 
         pdf.set_font("Helvetica", size=9)
         due_date = row.get("due_date", "N/A")
+        owner = str(row.get("owner", "N/A"))[:30]
+        category = str(row.get("category", "N/A"))[:30]
+
         pdf.cell(0, 4, f"  Due: {due_date}", ln=True)
-        pdf.cell(0, 4, f"  Owner: {row.get('owner', 'N/A')}", ln=True)
-        pdf.cell(0, 4, f"  Category: {row.get('category', 'N/A')}", ln=True)
+        pdf.cell(0, 4, f"  Owner: {owner}", ln=True)
+        pdf.cell(0, 4, f"  Category: {category}", ln=True)
 
-        if row.get("notes"):
-            pdf.cell(0, 4, f"  Notes: {row['notes']}", ln=True)
+        notes = row.get("notes")
+        if notes:
+            notes_str = str(notes)[:50]  # Truncate long notes
+            pdf.cell(0, 4, f"  Notes: {notes_str}", ln=True)
 
-        pdf.cell(0, 4, f"  Reminders: {row.get('reminder_type', 'N/A')}, {row.get('lead_time_days', 0)} day(s) before", ln=True)
+        reminder_type = str(row.get("reminder_type", "N/A"))[:20]
+        lead_days = row.get("lead_time_days", 0)
+        pdf.cell(0, 4, f"  Reminders: {reminder_type}, {lead_days} day(s)", ln=True)
         pdf.ln(1)
 
     # Footer
