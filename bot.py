@@ -1351,7 +1351,7 @@ async def add_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         return
 
     # For 1-to-1, clear any existing state to allow restarting incomplete flows
-    context.user_data.pop("new_renewal", None) ConversationHandler.END
+    context.user_data.pop("new_renewal", None)
 
     # For personal chats, use ConversationHandler flow
     if not await require_consent(update):
