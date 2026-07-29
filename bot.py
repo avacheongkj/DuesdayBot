@@ -71,6 +71,32 @@ except Exception:
 
 TO_DUE_TABLE = "to_due"
 
+# --- Group Conversation State (v2) -------------------------------------------
+# Module-level dict to track group /add conversation state.
+# Key: (user_id, group_id), Value: {"step": str, "data": dict}
+# This persists across message updates in groups (unlike context.user_data).
+GROUP_ADD_STATE: dict[tuple[str, str], dict] = {}
+
+
+def get_group_state_key(user_id: str, group_id: str) -> tuple[str, str]:
+    """Generate a key for storing group conversation state."""
+    return (user_id, group_id)
+
+
+def get_group_state(user_id: str, group_id: str) -> dict | None:
+    """Retrieve group conversation state for a user in a group."""
+    return GROUP_ADD_STATE.get(get_group_state_key(user_id, group_id))
+
+
+def set_group_state(user_id: str, group_id: str, state: dict) -> None:
+    """Store group conversation state for a user in a group."""
+    GROUP_ADD_STATE[get_group_state_key(user_id, group_id)] = state
+
+
+def clear_group_state(user_id: str, group_id: str) -> None:
+    """Clear group conversation state for a user in a group."""
+    GROUP_ADD_STATE.pop(get_group_state_key(user_id, group_id), None)
+
 
 def get_scope(update: Update) -> tuple[str, str]:
     """Resolve (scope, scope_id) for the current chat.
@@ -1437,45 +1463,36 @@ async def add_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-# --- Group-specific /add handlers (custom state tracking) ---
-def get_group_add_key(update: Update) -> str:
-    """Generate a unique key for group conversation state."""
-    chat_id = update.effective_chat.id
-    user_id = update.effective_user.id
-    return f"group_add_{chat_id}_{user_id}"
-
-
+# --- Group-specific /add handlers (v2: module-level state tracking) ---
 async def add_start_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Start /add flow in a group with custom state tracking."""
+    """Start /add flow in a group with persistent state tracking."""
     if not await require_consent(update):
         return
-    key = get_group_add_key(update)
-    context.user_data[key] = {"step": "item", "data": {}}
+    user_id = str(update.effective_user.id)
+    group_id = str(update.effective_chat.id)
+    set_group_state(user_id, group_id, {"step": "item", "data": {}})
     await update.message.reply_text(ADD_ITEM_PROMPT)
 
 
 async def group_add_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle messages in group /add flow by checking current step."""
+    """Handle messages in group /add flow using module-level state tracking (v2)."""
     scope, _ = get_scope(update)
-    logger.info(f"Group handler triggered - scope: {scope}, chat_type: {update.effective_chat.type}")
-
     if scope != "group":
-        logger.info(f"Not a group, ignoring")
         return
 
-    key = get_group_add_key(update)
-    logger.info(f"Looking for key: {key}, available keys: {list(context.user_data.keys())}")
+    user_id = str(update.effective_user.id)
+    group_id = str(update.effective_chat.id)
+    state = get_group_state(user_id, group_id)
 
-    if key not in context.user_data:
-        logger.info(f"Key not found in user_data, ignoring")
+    if state is None:
         return
 
-    state = context.user_data[key]
     step = state.get("step")
 
     if step == "item":
         state["data"]["item"] = update.message.text
         state["step"] = "date"
+        set_group_state(user_id, group_id, state)
         await update.message.reply_text("When is it due? (e.g., 15 March 2027)")
 
     elif step == "date":
@@ -1490,11 +1507,13 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
         state["data"]["date_display"] = text
         state["data"]["due_date"] = due_date
         state["step"] = "owner"
+        set_group_state(user_id, group_id, state)
         await update.message.reply_text("Who owns it? You, your partner or someone else?")
 
     elif step == "owner":
         state["data"]["owner"] = update.message.text
         state["step"] = "link"
+        set_group_state(user_id, group_id, state)
         await update.message.reply_text(
             "Any link to save? (e.g., renewal page URL — just reply 'skip' if not)"
         )
@@ -1503,6 +1522,7 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
         link = update.message.text.strip()
         state["data"]["link"] = None if link.lower() == "skip" else link
         state["step"] = "lead_time"
+        set_group_state(user_id, group_id, state)
         await update.message.reply_text(
             "How far in advance should I start reminding you? (e.g., 7 days, 2 weeks)"
         )
@@ -1518,6 +1538,7 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
         state["data"]["reminder_lead_days"] = lead_days
         state["data"]["reminder_lead_label"] = lead_label
         state["step"] = "reminder_count"
+        set_group_state(user_id, group_id, state)
         await update.message.reply_text("How many reminders would you like? (e.g., 1, 2, 3)")
 
     elif step == "reminder_count":
@@ -1561,7 +1582,7 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
                 "Please try /add again in a moment."
             )
 
-        context.user_data.pop(key, None)
+        clear_group_state(user_id, group_id)
 
 
 HELP_TEXT = (
@@ -2059,7 +2080,7 @@ def build_application() -> Application:
         fallbacks=[CommandHandler("cancel", delete_cancel)],
     )
 
-    # Group /add flow handler (custom state tracking for groups) — must be BEFORE ConversationHandlers
+    # Group /add flow handler (v2: module-level state tracking)
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUP, group_add_message_handler)
     )
