@@ -2060,6 +2060,7 @@ def build_application() -> Application:
         },
         fallbacks=[
             CommandHandler("cancel", add_cancel),
+            CommandHandler("add", add_start),
             CommandHandler("list", list_renewals),
             CommandHandler("edit", edit_start),
             CommandHandler("delete", delete_start),
