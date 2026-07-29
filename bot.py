@@ -1457,11 +1457,17 @@ async def add_start_group(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def group_add_message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle messages in group /add flow by checking current step."""
     scope, _ = get_scope(update)
+    logger.info(f"Group handler triggered - scope: {scope}, chat_type: {update.effective_chat.type}")
+
     if scope != "group":
+        logger.info(f"Not a group, ignoring")
         return
 
     key = get_group_add_key(update)
+    logger.info(f"Looking for key: {key}, available keys: {list(context.user_data.keys())}")
+
     if key not in context.user_data:
+        logger.info(f"Key not found in user_data, ignoring")
         return
 
     state = context.user_data[key]
