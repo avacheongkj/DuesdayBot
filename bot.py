@@ -1471,9 +1471,9 @@ async def add_start_group(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
     user_id = str(update.effective_user.id)
     group_id = str(update.effective_chat.id)
-    print(f"DEBUG: add_start_group called - user_id={user_id}, group_id={group_id}")
+    # Clear any existing state for this user/group to allow restarting the flow
+    clear_group_state(user_id, group_id)
     set_group_state(user_id, group_id, {"step": "item", "data": {}})
-    print(f"DEBUG: state set for user_id={user_id}, group_id={group_id}")
     await update.message.reply_text(ADD_ITEM_PROMPT)
 
 
