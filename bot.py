@@ -108,10 +108,6 @@ def get_scope(update: Update) -> tuple[str, str]:
     return "personal", str(update.effective_user.id)
 
 
-def not_command(update: Update) -> bool:
-    """Return False if message is a command, True otherwise."""
-    return not update.message.text.startswith("/")
-
 
 async def save_renewal(row: dict) -> bool:
     """Insert a renewal row into Supabase. Returns True on success."""
@@ -1160,6 +1156,29 @@ async def edit_receive_link(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
 
 
+async def edit_receive_notes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    text = update.message.text.strip()
+    notes = None if text.lower() == "skip" else text
+    renewal_id = context.user_data.get("edit_renewal_id")
+    logger.info(f"Editing renewal id={renewal_id}: notes -> {notes}")
+    updated = await update_renewal(
+        renewal_id,
+        {"notes": notes, "updated_at": datetime.now(timezone.utc).isoformat()},
+    )
+    if updated:
+        await update.message.reply_text(
+            f"Notes updated to {notes} ✅" if notes else "Notes cleared ✅",
+            reply_markup=build_after_edit_keyboard(),
+        )
+        return EDIT_AWAITING_CONTINUE
+
+    context.user_data.pop("edit_renewal_id", None)
+    await update.message.reply_text(
+        "I couldn't reach the database, so that update didn't save. Please try again."
+    )
+    return ConversationHandler.END
+
+
 async def handle_edit_flow_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -2106,6 +2125,9 @@ def build_application() -> Application:
             EDIT_AWAITING_REMINDER_TYPE: [
                 CallbackQueryHandler(edit_receive_reminder_type, pattern=r"^edit_reminder_type:")
             ],
+            EDIT_AWAITING_NOTES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, edit_receive_notes)
+            ],
             EDIT_AWAITING_LINK: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, edit_receive_link)
             ],
@@ -2151,7 +2173,7 @@ def build_application() -> Application:
 
     # Group /add flow handler (v2: module-level state tracking)
     application.add_handler(
-        MessageHandler(filters.TEXT & filters.ChatType.GROUP & not_command, group_add_message_handler)
+        MessageHandler(filters.TEXT & filters.ChatType.GROUP & ~filters.COMMAND, group_add_message_handler)
     )
 
     # Registered before the "hello" handler so replies mid-conversation
