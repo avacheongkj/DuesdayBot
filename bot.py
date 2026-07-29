@@ -2053,6 +2053,11 @@ def build_application() -> Application:
         fallbacks=[CommandHandler("cancel", delete_cancel)],
     )
 
+    # Group /add flow handler (custom state tracking for groups) — must be BEFORE ConversationHandlers
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.GROUP, group_add_message_handler)
+    )
+
     # Registered before the "hello" handler so replies mid-conversation
     # (even ones containing "hello") are captured by the flow, not by hello.
     application.add_handler(add_conversation)
@@ -2094,11 +2099,6 @@ def build_application() -> Application:
     # Add new handlers here as the bot grows (commands, callbacks, etc.)
     application.add_handler(
         MessageHandler(filters.TEXT & filters.Regex(HELLO_PATTERN), handle_hello)
-    )
-
-    # Group /add flow handler (custom state tracking for groups)
-    application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, group_add_message_handler)
     )
 
     return application
