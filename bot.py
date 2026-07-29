@@ -1965,7 +1965,7 @@ def generate_export_pdf(rows: list[dict], scope: str) -> bytes:
     pdf.ln(2)
     pdf.cell(0, 4, "Questions? Use /help or /privacy", align="C")
 
-    return pdf.output(dest="S").encode("latin-1")
+    return pdf.output()
 
 
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
