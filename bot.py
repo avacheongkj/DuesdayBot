@@ -2100,32 +2100,12 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                          date.fromisoformat(r["due_date"]).month == today.month and
                          date.fromisoformat(r["due_date"]).year == today.year)
 
-    # Categories breakdown
-    categories = {}
-    for r in rows:
-        cat = r.get("category", "Other")
-        categories[cat] = categories.get(cat, 0) + 1
-
-    # Reminder types breakdown
-    reminder_types = {}
-    for r in rows:
-        rt = r.get("reminder_type", "unknown")
-        reminder_types[rt] = reminder_types.get(rt, 0) + 1
-
     message = "STATS\n\n"
     message += f"Total items: {total}\n"
     message += f"Overdue: {overdue}\n"
     message += f"Due today: {due_today}\n"
     message += f"Due this week: {due_this_week}\n"
-    message += f"Due this month: {due_this_month}\n\n"
-
-    message += "By Category:\n"
-    for cat, count in sorted(categories.items(), key=lambda x: x[1], reverse=True):
-        message += f"  {cat}: {count}\n"
-
-    message += "\nReminder Types:\n"
-    for rt, count in sorted(reminder_types.items()):
-        message += f"  {rt}: {count}\n"
+    message += f"Due this month: {due_this_month}"
 
     await update.message.reply_text(message)
 
