@@ -58,9 +58,9 @@ We do not share, sell, or trade your data to third parties.
 ## 7. Data Retention
 
 - **Active Data:** Retained whilst your account is active
-- **Deleted Data:** Permanently deleted immediately when you run the `/stop` command
-- **Backup Copies:** Automated backups may persist for up to 90 days for disaster recovery purposes only
-- **Legal Holds:** If we receive a court order, legal hold notice, or valid regulatory request, we will preserve your data as required by law and stop processing deletion requests until the legal obligation is resolved
+- **Deleted Data:** Permanently and irreversibly deleted immediately when you run the `/stop` command. Once deleted, data cannot be recovered
+- **Backup Copies:** Automated backups may persist for up to 90 days for disaster recovery purposes only, after which they are also permanently deleted
+- **Legal Limitations:** Due to immediate deletion upon request, we cannot recover or preserve deleted data for future legal holds, court orders, or regulatory requests. If you anticipate legal proceedings, do not run the `/stop` command
 
 ## 8. Your Rights Under PDPA
 
