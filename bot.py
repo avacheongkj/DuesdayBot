@@ -462,6 +462,8 @@ async def send_reminder(bot, row: dict, days_remaining: int) -> None:
     ]
     if row.get("link"):
         lines.append(f"Link: {row['link']}")
+    if row.get("notes"):
+        lines.append(f"📝 Notes: {row['notes']}")
 
     try:
         await bot.send_message(
@@ -587,11 +589,13 @@ async def check_group_reminders(bot) -> None:
     groups_notified = 0
     for group_id, items in by_group.items():
         items.sort(key=lambda pair: pair[1])
-        lines = [
-            f"• {row['name']} - {format_due_label(date.fromisoformat(row['due_date']))} "
-            f"({days_remaining} days away)"
-            for row, days_remaining in items
-        ]
+        lines = []
+        for row, days_remaining in items:
+            line = (f"• {row['name']} - {format_due_label(date.fromisoformat(row['due_date']))} "
+                    f"({days_remaining} days away)")
+            if row.get("notes"):
+                line += f"\n  📝 {row['notes']}"
+            lines.append(line)
         text = "📋 Upcoming group to-dues:\n" + "\n".join(lines)
 
         try:
