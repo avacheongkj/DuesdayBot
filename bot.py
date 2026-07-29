@@ -1401,9 +1401,8 @@ async def add_reminder_count(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     scope, scope_id = get_scope(update)
     row = {
-        # Exactly one of user_id/group_id is set, never both — scope_id already
-        # holds the right value for either case (see get_scope).
-        "user_id": None if scope == "group" else scope_id,
+        # For groups, use group_id as user_id to avoid NOT NULL constraint
+        "user_id": scope_id,
         "group_id": scope_id if scope == "group" else None,
         "name": renewal["item"],
         "due_date": renewal["due_date"],
@@ -1530,7 +1529,8 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
 
         scope, scope_id = get_scope(update)
         row = {
-            "user_id": None if scope == "group" else scope_id,
+            # For groups, use group_id as user_id to avoid NOT NULL constraint
+            "user_id": scope_id,
             "group_id": scope_id if scope == "group" else None,
             "name": data["item"],
             "due_date": data["due_date"],
