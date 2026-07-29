@@ -13,7 +13,7 @@ DuesdayBot is operated by Ava Chong. For privacy enquiries, contact: avackj1999@
 We collect the following:
 
 - **Telegram Account Information:** Your Telegram user ID, username, first and last name
-- **To-Due Items:** Item names, due dates, categories (subscription, insurance, passport, credit card, etc.), owner (you/Jon/both), links, and custom notes
+- **To-Due Items:** Item names, due dates, categories (subscription, insurance, passport, credit card, etc.), owner (you/your partner/someone else), links, and custom notes
 - **Reminder Settings:** Lead time (days before reminder), reminder type (single/escalating/weekly), and last reminder date
 - **Interaction Data:** Your responses to reminders, button taps (Done/Snooze/Compare), and edits you make
 - **Preferences:** Custom reminder schedules and notification settings
@@ -34,7 +34,7 @@ Under Singapore's Personal Data Protection Act (PDPA), you can withdraw consent 
 We use your data to:
 
 - Store and manage your to-dues in our database
-- Send daily reminder notifications at your chosen time (9am by default)
+- Send daily reminder notifications at your chosen time (8am by default)
 - Process your responses to reminders (marking as done, snooping, comparing)
 - Allow you to edit or delete to-dues
 - Improve the Service and fix bugs
