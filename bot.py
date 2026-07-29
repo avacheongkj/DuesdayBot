@@ -937,9 +937,10 @@ async def send_owned_renewal_picker(
     EDIT_AWAITING_DATE,
     EDIT_AWAITING_LEAD_TIME,
     EDIT_AWAITING_REMINDER_TYPE,
+    EDIT_AWAITING_NOTES,
     EDIT_AWAITING_LINK,
     EDIT_AWAITING_CONTINUE,
-) = range(10, 16)
+) = range(10, 17)
 
 REMINDER_TYPE_OPTIONS = ["single", "escalating", "weekly"]
 
@@ -961,8 +962,9 @@ def build_edit_field_keyboard() -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton("🔔 Reminder Type", callback_data="edit_field:reminder_type"),
-                InlineKeyboardButton("🔗 Link", callback_data="edit_field:link"),
+                InlineKeyboardButton("📝 Notes", callback_data="edit_field:notes"),
             ],
+            [InlineKeyboardButton("🔗 Link", callback_data="edit_field:link")],
             [InlineKeyboardButton("❌ Cancel", callback_data="edit_field:cancel")],
         ]
     )
@@ -1040,6 +1042,10 @@ async def edit_field_choice_button(update: Update, context: ContextTypes.DEFAULT
             "Pick a reminder type:", reply_markup=build_reminder_type_keyboard()
         )
         return EDIT_AWAITING_REMINDER_TYPE
+
+    if choice == "notes":
+        await query.message.reply_text("New notes? (or reply 'skip' to remove them)")
+        return EDIT_AWAITING_NOTES
 
     # choice == "link"
     await query.message.reply_text("New URL? (or reply 'skip' to remove it)")
@@ -1917,6 +1923,12 @@ async def start_help_button(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await query.message.reply_text(HELP_TEXT)
 
 
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /help command."""
+    logger.info(f"Help command by user {update.effective_user.id}")
+    await update.message.reply_text(HELP_TEXT)
+
+
 def build_list_item_keyboard(renewal_id) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
@@ -2032,6 +2044,7 @@ def build_application() -> Application:
             CommandHandler("list", list_renewals),
             CommandHandler("edit", edit_start),
             CommandHandler("delete", delete_start),
+            CommandHandler("help", help_command),
             CommandHandler("export", export_command),
             CommandHandler("privacy", privacy_command),
             CommandHandler("checknow", check_now),
