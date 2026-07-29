@@ -2060,15 +2060,6 @@ def build_application() -> Application:
         },
         fallbacks=[
             CommandHandler("cancel", add_cancel),
-            CommandHandler("add", add_start),
-            CommandHandler("list", list_renewals),
-            CommandHandler("edit", edit_start),
-            CommandHandler("delete", delete_start),
-            CommandHandler("help", help_command),
-            CommandHandler("export", export_command),
-            CommandHandler("privacy", privacy_command),
-            CommandHandler("checknow", check_now),
-            CommandHandler("stop", stop_start),
         ],
     )
 
@@ -2096,15 +2087,6 @@ def build_application() -> Application:
         },
         fallbacks=[
             CommandHandler("cancel", cancel_renewal_action),
-            CommandHandler("add", add_start),
-            CommandHandler("list", list_renewals),
-            CommandHandler("edit", edit_start),
-            CommandHandler("delete", delete_start),
-            CommandHandler("help", help_command),
-            CommandHandler("export", export_command),
-            CommandHandler("privacy", privacy_command),
-            CommandHandler("checknow", check_now),
-            CommandHandler("stop", stop_start),
         ],
     )
 
@@ -2139,14 +2121,6 @@ def build_application() -> Application:
         },
         fallbacks=[
             CommandHandler("cancel", edit_cancel),
-            CommandHandler("add", add_start),
-            CommandHandler("list", list_renewals),
-            CommandHandler("delete", delete_start),
-            CommandHandler("help", help_command),
-            CommandHandler("export", export_command),
-            CommandHandler("privacy", privacy_command),
-            CommandHandler("checknow", check_now),
-            CommandHandler("stop", stop_start),
         ],
     )
 
@@ -2161,14 +2135,6 @@ def build_application() -> Application:
         },
         fallbacks=[
             CommandHandler("cancel", delete_cancel),
-            CommandHandler("add", add_start),
-            CommandHandler("list", list_renewals),
-            CommandHandler("edit", edit_start),
-            CommandHandler("help", help_command),
-            CommandHandler("export", export_command),
-            CommandHandler("privacy", privacy_command),
-            CommandHandler("checknow", check_now),
-            CommandHandler("stop", stop_start),
         ],
     )
 
@@ -2177,17 +2143,22 @@ def build_application() -> Application:
         MessageHandler(filters.TEXT & filters.ChatType.GROUP & ~filters.COMMAND, group_add_message_handler)
     )
 
-    # Registered before the "hello" handler so replies mid-conversation
-    # (even ones containing "hello") are captured by the flow, not by hello.
-    application.add_handler(add_conversation)
+    # Register all command handlers at app level FIRST, before ConversationHandlers.
+    # This ensures any command sent at any time interrupts the current flow,
+    # and the latest command always wins, regardless of sequence.
     application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("add", add_start))
     application.add_handler(CommandHandler("list", list_renewals))
     application.add_handler(CommandHandler("edit", edit_start))
     application.add_handler(CommandHandler("delete", delete_start))
-    application.add_handler(CommandHandler("checknow", check_now))
-    application.add_handler(CommandHandler("stop", stop_start))
+    application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("export", export_command))
     application.add_handler(CommandHandler("privacy", privacy_command))
+    application.add_handler(CommandHandler("checknow", check_now))
+    application.add_handler(CommandHandler("stop", stop_start))
+
+    # ConversationHandlers registered after app-level commands, so commands always take priority
+    application.add_handler(add_conversation)
     application.add_handler(renewal_action_conversation)
     application.add_handler(edit_conversation)
     application.add_handler(delete_conversation)
