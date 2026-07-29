@@ -886,13 +886,17 @@ async def handle_compare_back(update: Update, context: ContextTypes.DEFAULT_TYPE
 # --- shared: per-item list rendering (used by /list, /edit, /delete pickers) ---
 def format_list_item(r: dict) -> str:
     link_text = r.get("link") or "—"
-    return (
+    notes_text = r.get("notes") or ""
+    output = (
         f"{r['name']} ({r['category']})\n"
         f"Due: {r['due_date']}\n"
         f"Owner: {r['owner']}\n"
         f"Link: {link_text}\n"
         f"Reminders: {r['reminder_type']}, {r['lead_time_days']} day(s) before"
     )
+    if notes_text:
+        output += f"\nNotes: {notes_text}"
+    return output
 
 
 def format_renewal_summary(row: dict) -> str:
@@ -1182,9 +1186,21 @@ async def edit_receive_notes(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def handle_edit_flow_done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    logger.info("Edit flow: Done pressed")
+    renewal_id = context.user_data.get("edit_renewal_id")
+    logger.info(f"Edit flow: Done pressed for renewal id={renewal_id}")
+
+    # Fetch and display the edited renewal
+    if renewal_id:
+        renewal = await fetch_renewal(renewal_id)
+        if renewal:
+            summary = format_list_item(renewal)
+            await query.message.reply_text(summary, reply_markup=build_list_item_keyboard(renewal_id))
+        else:
+            await query.message.reply_text("All set!")
+    else:
+        await query.message.reply_text("All set!")
+
     context.user_data.pop("edit_renewal_id", None)
-    await query.message.reply_text("All set!")
     return ConversationHandler.END
 
 
