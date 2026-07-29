@@ -20,6 +20,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dateutil import parser as date_parser
 from dotenv import load_dotenv
+from fpdf import FPDF
 from supabase import Client, create_client
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
@@ -1906,6 +1907,67 @@ def build_export_payload(rows: list[dict]) -> list[dict]:
     return [{field: r.get(field) for field in EXPORT_FIELDS} for r in rows]
 
 
+def generate_export_pdf(rows: list[dict], scope: str) -> bytes:
+    """Generate a mobile-friendly PDF export of to-dues."""
+    pdf = FPDF(orientation="P", unit="mm", format="A4")
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=10)
+
+    # Header
+    pdf.set_font("Helvetica", "B", size=14)
+    pdf.cell(0, 8, "DuesdayBot - Your To-Dues", ln=True, align="C")
+    pdf.set_font("Helvetica", size=9)
+    pdf.cell(0, 5, f"Exported: {date.today().strftime('%d %b %Y')}", ln=True, align="C")
+    pdf.ln(3)
+
+    # Summary
+    today = date.today()
+    total = len(rows)
+    due_this_month = sum(1 for r in rows if r.get("due_date") and
+                         date.fromisoformat(r["due_date"]).month == today.month and
+                         date.fromisoformat(r["due_date"]).year == today.year)
+    overdue = sum(1 for r in rows if r.get("due_date") and
+                  date.fromisoformat(r["due_date"]) < today)
+
+    pdf.set_font("Helvetica", "B", size=11)
+    pdf.cell(0, 6, "Summary", ln=True)
+    pdf.set_font("Helvetica", size=10)
+    pdf.cell(0, 5, f"• Total items: {total}", ln=True)
+    pdf.cell(0, 5, f"• Due this month: {due_this_month}", ln=True)
+    pdf.cell(0, 5, f"• Overdue: {overdue}", ln=True)
+    pdf.ln(2)
+
+    # Sort by due date
+    sorted_rows = sorted(rows, key=lambda r: r.get("due_date", "9999-12-31"))
+
+    # Items
+    pdf.set_font("Helvetica", "B", size=11)
+    pdf.cell(0, 6, "Your To-Dues", ln=True)
+
+    for row in sorted_rows:
+        pdf.set_font("Helvetica", "B", size=10)
+        pdf.cell(0, 5, row["name"], ln=True)
+
+        pdf.set_font("Helvetica", size=9)
+        due_date = row.get("due_date", "N/A")
+        pdf.cell(0, 4, f"  Due: {due_date}", ln=True)
+        pdf.cell(0, 4, f"  Owner: {row.get('owner', 'N/A')}", ln=True)
+        pdf.cell(0, 4, f"  Category: {row.get('category', 'N/A')}", ln=True)
+
+        if row.get("notes"):
+            pdf.cell(0, 4, f"  Notes: {row['notes']}", ln=True)
+
+        pdf.cell(0, 4, f"  Reminders: {row.get('reminder_type', 'N/A')}, {row.get('lead_time_days', 0)} day(s) before", ln=True)
+        pdf.ln(1)
+
+    # Footer
+    pdf.set_font("Helvetica", size=8)
+    pdf.ln(2)
+    pdf.cell(0, 4, "Questions? Use /help or /privacy", align="C")
+
+    return pdf.output(dest="S").encode("latin-1")
+
+
 async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     scope, scope_id = get_scope(update)
     logger.info(
@@ -1922,15 +1984,14 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         )
         return
 
-    payload = build_export_payload(rows)
-    file_bytes = json.dumps(payload, indent=2).encode("utf-8")
-    filename = f"DuesdayBot_Export_{date.today().isoformat()}.json"
+    # Generate PDF
+    file_bytes = generate_export_pdf(rows, scope)
+    filename = f"DuesdayBot_Export_{date.today().isoformat()}.pdf"
 
     await update.message.reply_document(document=io.BytesIO(file_bytes), filename=filename)
     exported_what = "This group's to-dues" if scope == "group" else "Your to-dues"
     await update.message.reply_text(
-        f"{exported_what} exported! This file contains all the data. "
-        "You can use this to back up or import elsewhere."
+        f"{exported_what} exported as PDF! Easy to read and print-friendly on mobile. 📱"
     )
 
 
