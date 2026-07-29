@@ -1676,9 +1676,12 @@ HELP_TEXT = (
     "Here's what I can do:\n\n"
     "/add - Add a new to-due item\n"
     "/list - View everything you've saved\n"
-    "/edit - Change the date, lead time, reminder type, or link on an existing to-due\n"
+    "/today - Show items due today\n"
+    "/upcoming [days] - Show items due in the next N days (default 7)\n"
+    "/stats - View your stats dashboard\n"
+    "/edit - Change the date, lead time, reminder type, notes, or link\n"
     "/delete - Remove a to-due\n"
-    "/export - Download all your data as a JSON file\n"
+    "/export - Download all your data as a PDF file\n"
     "/privacy - View your PDPA data rights and the privacy policy\n"
     "/checknow - Manually run the daily reminder check\n"
     "/stop - Permanently delete all your data and stop using DuesdayBot\n"
@@ -2003,6 +2006,128 @@ async def export_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
+# --- /today -------------------------------------------------------------------
+async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show items due today."""
+    scope, scope_id = get_scope(update)
+    rows = await fetch_renewals_for_scope(scope, scope_id)
+
+    if rows is None:
+        await update.message.reply_text("I couldn't reach the database. Please try again shortly.")
+        return
+
+    today = date.today()
+    today_items = [r for r in rows if r.get("due_date") and date.fromisoformat(r["due_date"]) == today]
+
+    if not today_items:
+        await update.message.reply_text("No items due today! Enjoy your day.")
+        return
+
+    message = f"Due Today ({len(today_items)} item{'s' if len(today_items) != 1 else ''}):\n\n"
+    for item in today_items:
+        message += f"- {item['name']}\n  Owner: {item['owner']}\n  Category: {item['category']}\n\n"
+
+    await update.message.reply_text(message)
+
+
+# --- /upcoming ----------------------------------------------------------------
+async def upcoming_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show items due in the next N days (default 7)."""
+    scope, scope_id = get_scope(update)
+
+    # Parse days argument
+    days = 7
+    if context.args and len(context.args) > 0:
+        try:
+            days = int(context.args[0])
+            if days < 1 or days > 365:
+                await update.message.reply_text("Please use a number between 1 and 365 days.")
+                return
+        except ValueError:
+            await update.message.reply_text("Please use /upcoming [number] (e.g., /upcoming 14)")
+            return
+
+    rows = await fetch_renewals_for_scope(scope, scope_id)
+
+    if rows is None:
+        await update.message.reply_text("I couldn't reach the database. Please try again shortly.")
+        return
+
+    today = date.today()
+    end_date = today + timedelta(days=days)
+    upcoming_items = [r for r in rows if r.get("due_date") and
+                      today <= date.fromisoformat(r["due_date"]) <= end_date]
+
+    if not upcoming_items:
+        await update.message.reply_text(f"No items due in the next {days} days. Great!")
+        return
+
+    # Sort by due date
+    upcoming_items.sort(key=lambda r: r.get("due_date", "9999-12-31"))
+
+    message = f"Due in next {days} days ({len(upcoming_items)} item{'s' if len(upcoming_items) != 1 else ''}):\n\n"
+    for item in upcoming_items:
+        due_date = item["due_date"]
+        days_until = (date.fromisoformat(due_date) - today).days
+        message += f"- {item['name']} (in {days_until} day{'s' if days_until != 1 else ''})\n  Due: {due_date}\n\n"
+
+    await update.message.reply_text(message)
+
+
+# --- /stats -------------------------------------------------------------------
+async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show stats dashboard."""
+    scope, scope_id = get_scope(update)
+    rows = await fetch_renewals_for_scope(scope, scope_id)
+
+    if rows is None:
+        await update.message.reply_text("I couldn't reach the database. Please try again shortly.")
+        return
+
+    if not rows:
+        await update.message.reply_text("You haven't added any items yet. Use /add to get started!")
+        return
+
+    today = date.today()
+    total = len(rows)
+    overdue = sum(1 for r in rows if r.get("due_date") and date.fromisoformat(r["due_date"]) < today)
+    due_today = sum(1 for r in rows if r.get("due_date") and date.fromisoformat(r["due_date"]) == today)
+    due_this_week = sum(1 for r in rows if r.get("due_date") and
+                        today <= date.fromisoformat(r["due_date"]) <= today + timedelta(days=7))
+    due_this_month = sum(1 for r in rows if r.get("due_date") and
+                         date.fromisoformat(r["due_date"]).month == today.month and
+                         date.fromisoformat(r["due_date"]).year == today.year)
+
+    # Categories breakdown
+    categories = {}
+    for r in rows:
+        cat = r.get("category", "Other")
+        categories[cat] = categories.get(cat, 0) + 1
+
+    # Reminder types breakdown
+    reminder_types = {}
+    for r in rows:
+        rt = r.get("reminder_type", "unknown")
+        reminder_types[rt] = reminder_types.get(rt, 0) + 1
+
+    message = "STATS\n\n"
+    message += f"Total items: {total}\n"
+    message += f"Overdue: {overdue}\n"
+    message += f"Due today: {due_today}\n"
+    message += f"Due this week: {due_this_week}\n"
+    message += f"Due this month: {due_this_month}\n\n"
+
+    message += "By Category:\n"
+    for cat, count in sorted(categories.items(), key=lambda x: x[1], reverse=True):
+        message += f"  {cat}: {count}\n"
+
+    message += "\nReminder Types:\n"
+    for rt, count in sorted(reminder_types.items()):
+        message += f"  {rt}: {count}\n"
+
+    await update.message.reply_text(message)
+
+
 # --- /privacy -----------------------------------------------------------------
 PRIVACY_TEXT = (
     "📖 *Your Privacy Rights Under PDPA:*\n\n"
@@ -2268,6 +2393,9 @@ def build_application() -> Application:
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("export", export_command))
     application.add_handler(CommandHandler("privacy", privacy_command))
+    application.add_handler(CommandHandler("today", today_command))
+    application.add_handler(CommandHandler("upcoming", upcoming_command))
+    application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("checknow", check_now))
     application.add_handler(CommandHandler("stop", stop_start))
 
