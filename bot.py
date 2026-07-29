@@ -109,19 +109,22 @@ def get_scope(update: Update) -> tuple[str, str]:
 
 
 
-async def save_renewal(row: dict) -> bool:
-    """Insert a renewal row into Supabase. Returns True on success."""
+async def save_renewal(row: dict) -> str | None:
+    """Insert a renewal row into Supabase. Returns the id on success, None on failure."""
     if supabase is None:
         logger.error("Supabase is not connected; cannot save renewal")
-        return False
+        return None
     try:
-        await asyncio.to_thread(
+        response = await asyncio.to_thread(
             lambda: supabase.table(TO_DUE_TABLE).insert(row).execute()
         )
-        return True
+        # Extract the id from the inserted row
+        if response.data and len(response.data) > 0:
+            return response.data[0].get("id")
+        return None
     except Exception:
         logger.exception("Failed to save renewal to Supabase")
-        return False
+        return None
 
 
 async def fetch_renewals_for_scope(scope: str, scope_id: str) -> list[dict] | None:
@@ -1497,16 +1500,25 @@ async def add_reminder_count(update: Update, context: ContextTypes.DEFAULT_TYPE)
         "reminder_type": renewal["reminder_type"],
         "category": renewal["category"],
     }
-    saved = await save_renewal(row)
+    renewal_id = await save_renewal(row)
 
-    if saved:
+    if renewal_id:
         shared_note = "\nAdded to the group's shared list!" if scope == "group" else ""
         notes_str = f"\n📝 Notes: {renewal['notes']}" if renewal["notes"] else ""
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("✎️ Edit", callback_data=f"edit_pick:{renewal_id}"),
+                    InlineKeyboardButton("🗑️ Delete", callback_data=f"delete_pick:{renewal_id}"),
+                ]
+            ]
+        )
         await update.message.reply_text(
             f"Got it! {renewal['item']} is due {renewal['date_display']}, "
             f"owned by {renewal['owner']}. I'll send {renewal['reminder_count']} "
             f"reminder(s), starting {renewal['reminder_lead_label']} before it's due. "
-            f"Saved!{notes_str}{shared_note}"
+            f"Saved!{notes_str}{shared_note}",
+            reply_markup=keyboard,
         )
     else:
         await update.message.reply_text(
@@ -1631,15 +1643,24 @@ async def group_add_message_handler(update: Update, context: ContextTypes.DEFAUL
             "reminder_type": data["reminder_type"],
             "category": data["category"],
         }
-        saved = await save_renewal(row)
+        renewal_id = await save_renewal(row)
 
-        if saved:
+        if renewal_id:
             notes_str = f"\n📝 Notes: {data['notes']}" if data["notes"] else ""
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton("✎️ Edit", callback_data=f"edit_pick:{renewal_id}"),
+                        InlineKeyboardButton("🗑️ Delete", callback_data=f"delete_pick:{renewal_id}"),
+                    ]
+                ]
+            )
             await update.message.reply_text(
                 f"Got it! {data['item']} is due {data['date_display']}, "
                 f"owned by {data['owner']}. I'll send {data['reminder_count']} "
                 f"reminder(s), starting {data['reminder_lead_label']} before it's due. "
-                f"Saved!{notes_str}\nAdded to the group's shared list!"
+                f"Saved!{notes_str}\nAdded to the group's shared list!",
+                reply_markup=keyboard,
             )
         else:
             await update.message.reply_text(
