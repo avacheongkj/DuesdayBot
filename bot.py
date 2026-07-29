@@ -2028,7 +2028,6 @@ def build_application() -> Application:
             CommandHandler("list", list_renewals),
             CommandHandler("edit", edit_start),
             CommandHandler("delete", delete_start),
-            CommandHandler("help", help_command),
             CommandHandler("export", export_command),
             CommandHandler("privacy", privacy_command),
             CommandHandler("checknow", check_now),
